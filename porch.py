@@ -1,10 +1,12 @@
+import asyncio
 import time
 import datetime
 import json
 
-import pytradfri
 import requests
 import logging
+
+import light_control
 
 """
 
@@ -135,11 +137,22 @@ def anyone_home(dt, leases):
     return False
 
 
-def turnon_light():
-    pass
+@asyncio.coroutine
+def turnon_light(settings):
+    api = yield from light_control.get_api(
+        settings['gateway'], settings['identity'], settings['key']
+    )
+    yield from light_control.control_light(
+
+    )
+
+    lights = yield from light_control.get_lights(api)
+    if lights:
+        yield from light_control.control_light(lights[0], api, True)
 
 
-def main_loop():
+@asyncio.coroutine
+def main_loop(loop):
     is_home_occupied = False
     settings = read_settings()
 
@@ -155,7 +168,7 @@ def main_loop():
             is_home_occupied = True
             if check_darkness(now, settings['latitude'], settings['longitude']):
                 logging.debug('And it\'s dark! Turn the light on!')
-                turnon_light()
+                yield from turnon_light()
         elif is_home_occupied and not anyone_home(now, leases) and not check_darkness(
                 now, settings['latitude'], settings['longitude']
         ):
@@ -164,8 +177,11 @@ def main_loop():
             is_home_occupied = False
         else:
             logging.debug('Nothing happened. Sleeping...')
-        time.sleep(5)
+        yield from asyncio.sleep(5)
 
 
 if __name__ == '__main__':
-    main_loop()
+    loop = asyncio.get_event_loop()
+
+    loop.run_until_complete(main_loop(loop))
+    loop.close()
