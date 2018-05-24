@@ -1,5 +1,5 @@
 import asyncio
-import time
+import aiohttp
 import datetime
 import json
 
@@ -78,8 +78,8 @@ def check_darkness(dt, latitude, longitude):
     """
     Check if it's dark in the location at the specified time.
     :param dt: Time to check
-    :param lat: Location's latitude
-    :param long: Location's longitude
+    :param latitude: Location's latitude
+    :param longitude: Location's longitude
     :return: True if it's dark, False otherwise
     """
     start_dark, end_dark = get_daylight(latitude=latitude, longitude=longitude)
@@ -137,22 +137,17 @@ def anyone_home(dt, leases):
     return False
 
 
-@asyncio.coroutine
-def turnon_light(settings):
-    api = yield from light_control.get_api(
+async def turnon_light(settings):
+    api = await light_control.get_api(
         settings['gateway'], settings['identity'], settings['key']
     )
-    yield from light_control.control_light(
 
-    )
-
-    lights = yield from light_control.get_lights(api)
+    lights = await light_control.get_lights(api)
     if lights:
-        yield from light_control.control_light(lights[0], api, True)
+        await light_control.control_light(lights[0], api, True)
 
 
-@asyncio.coroutine
-def main_loop(loop):
+async def main_loop(loop):
     is_home_occupied = False
     settings = read_settings()
 
@@ -168,7 +163,7 @@ def main_loop(loop):
             is_home_occupied = True
             if check_darkness(now, settings['latitude'], settings['longitude']):
                 logging.debug('And it\'s dark! Turn the light on!')
-                yield from turnon_light()
+                await turnon_light(settings)
         elif is_home_occupied and not anyone_home(now, leases) and not check_darkness(
                 now, settings['latitude'], settings['longitude']
         ):
@@ -177,7 +172,7 @@ def main_loop(loop):
             is_home_occupied = False
         else:
             logging.debug('Nothing happened. Sleeping...')
-        yield from asyncio.sleep(5)
+        await asyncio.sleep(5)
 
 
 if __name__ == '__main__':

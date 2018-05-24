@@ -17,8 +17,7 @@ def get_api(hostname, identity, psk):
 def get_lights(api):
     gateway = Gateway()
 
-    devices_command = gateway.get_devices()
-    devices_commands = yield from api(devices_command)
+    devices_commands = yield from api(gateway.get_devices())
     devices = yield from api(devices_commands)
 
     return [dev for dev in devices if dev.has_light_control]
